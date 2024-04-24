@@ -34,6 +34,8 @@ class Application(BaseModel):
     def set_application_id(cls, values):
         if values.get('application_id') is None:
             values['application_id'] = generate_unique_application_id()
+        if values.get('submission_date') is None:
+            values['submission_date'] = datetime.now().strftime("%m/%d/%Y")
         return values
 
     @validator('city', pre=True, always=True)
