@@ -57,25 +57,23 @@ async def get_application_status(application_id: str):
         df = pd.read_csv(csv_file)
         # Find the match on the application id
         result = df[df['application_id'] == application_id]
+        # Check if the id is empty
+        if result.empty:
+            return f"{application_id} is not found.  Please check and try again."
         # Get submission date from application
         submission_date = result['submission_date'].iloc[0]
         # Get our as_of_date
         as_of_date = datetime.now().strftime("%m%d%Y")
         # Get applications status
         status = result['status'].iloc[0]
-        # Check if the id is empty
-        if result.empty:
-            return f"The Application id for {application_id} is incorrect or does not exist, please re-enter the id or consult..."
-        
         # Setup output string for bot
-        output_string = f"As of {as_of_date}. The applications status for ID:{application_id} is {status}, which was submitted on {submission_date}"
-        return output_string
+        return f"As of {as_of_date}, the status for {application_id} is {status}.  It was submitted on {submission_date}"
 
     except FileNotFoundError:
         return "Data file does not exist."
     
     except Exception as e:
-        return {"error": str(e)}
+        return str(e)
 
 @app.post("/add")
 async def add_application(application: Application):
@@ -101,6 +99,22 @@ async def add_application(application: Application):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
+@app.get("/book_of_business")
+def book_of_business():
+    df = pd.read_csv("book_of_business.csv")
+    # Get the total number of members
+    total = sum(df["count"])
+    # Start the book of business narative
+    text = f"You have {total} members in your book of business.  The breakout is as follows:"
+    # Aggregate the data up by plan
+    df = df.groupby(["plan"])["count"].sum().reset_index()
+    # Loop over the aggregated data
+    for __, row in df.iterrows():
+        # Add to the narative
+        text = text + "\n " + row["plan"] + ": " + str(row["count"])
+    # Return the narative
+    return text
 
 if __name__ == "__main__":
     import uvicorn
