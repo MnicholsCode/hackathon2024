@@ -1,2 +1,2 @@
-application_id,status,first_name,last_name,submission_date
-12345,Pending,John,Smith,02/23/2021
+application_id,status,first_name,last_name,submission_date,dob,address,city,state,zip,plan_choice
+12345,Pending,John,Smith,02/23/2021,05/22/1985,34 text lane,Buffalo,NY,12242,Healthy Blue
