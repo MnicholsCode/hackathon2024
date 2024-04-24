@@ -1,2 +1,2 @@
-application_id,status,first_name,last_name
-12345,Pending,John,Smith
+application_id,status,first_name,last_name,submission_date
+12345,Pending,John,Smith,02/23/2021
