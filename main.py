@@ -18,10 +18,10 @@ async def get_application_status(application_id: int):
         df = pd.read_csv(csv_file)
         result = df[df['application_id'] == application_id]
         if result.empty:
-            return {"error": "Application not found"}
-        return {"application_id": application_id, "status": result['status'].iloc[0]}
+            return f"The Application id for {application_id} is incorrect or does not exist, please re-enter the id or consult..."
+        return f"The Application status for: {application_id} is {result['status'].iloc[0]}"
     except FileNotFoundError:
-        return {"error": "Data file not found"}
+        return "Data file does not exist."
     except Exception as e:
         return {"error": str(e)}
 
