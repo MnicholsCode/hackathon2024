@@ -123,7 +123,7 @@ async def add_application(application_data: Application, db: Session = Depends(g
         # Return a message indicating success along with the application_id
         return f"The application is submitted. The id is {new_application.application_id}. Write this down to track the status."
     except Exception as e:
-        do.rollback()
+        db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
     
 
