@@ -43,7 +43,6 @@ class Order(BaseModel):
     address: str
 
 
-
 # Pydantic model for input validation
 class Application(BaseModel):
     first_name: str 
@@ -51,6 +50,7 @@ class Application(BaseModel):
     dob: str 
     address: Optional[str] = None 
     plan_choice: str
+
 
 # SQLAlchemy model for database
 class ApplicationDB(Base):
@@ -63,6 +63,7 @@ class ApplicationDB(Base):
     dob = Column(String)
     address = Column(String, default="N/A")
     plan_choice = Column(String)
+
 
 @app.on_event("startup")
 def startup_event():
@@ -106,6 +107,21 @@ async def get_application_status(application_id: str, db: Session=Depends(get_db
     except Exception as e:
         return str(e)
 
+@app.get("/search-by-name", response_model=str)
+async def fetch_applications_by_name(first_name: str, last_name: str, db: Session = Depends(get_db)):
+    applications = db.query(ApplicationDB).filter(
+        ApplicationDB.first_name == first_name,
+        ApplicationDB.last_name == last_name
+    ).all()
+
+    if not applications:
+        return "No applications found with the provided names."
+
+    response = "\n".join(
+        f"Application ID: {app.application_id}, Name: {app.first_name} {app.last_name}, Status: {app.status}, Address: {app.address}, Submitted on: {app.submission_date}, DOB: {app.dob}, Plan Choice" {app.plan_choice}"
+        for app in applications
+    )
+    return response
 
 @app.post("/add")
 async def add_application(application_data: Application, db: Session = Depends(get_db)):
