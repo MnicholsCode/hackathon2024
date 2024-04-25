@@ -3,6 +3,7 @@ from secrets import token_hex
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, validator, root_validator
 from datetime import datetime
+import uuid
 
 app = FastAPI()
 csv_file = "data.csv"
@@ -16,8 +17,9 @@ def generate_unique_application_id():
     df = pd.read_csv(csv_file)
     while True:
         new_id = token_hex(2)  # Generates a random 4-char hex string (2 bytes)
-        if new_id not in df['application_id'].values:
+        if new_id not in df["application_id"].values:
             return new_id
+
 
 class Application(BaseModel):
     application_id: str = None
@@ -34,19 +36,19 @@ class Application(BaseModel):
 
     @root_validator(pre=True)
     def set_application_id(cls, values):
-        if values.get('application_id') is None:
-            values['application_id'] = generate_unique_application_id()
-        if values.get('submission_date') is None:
-            values['submission_date'] = datetime.now().strftime("%m/%d/%Y")
+        if values.get("application_id") is None:
+            values["application_id"] = generate_unique_application_id()
+        if values.get("submission_date") is None:
+            values["submission_date"] = datetime.now().strftime("%m/%d/%Y")
         return values
 
-    @validator('city', pre=True, always=True)
+    @validator("city", pre=True, always=True)
     def capitalize_city(cls, v):
-        return v.title() if v else 'Missing'
+        return v.title() if v else "Missing"
 
-    @validator('state', pre=True, always=True)
+    @validator("state", pre=True, always=True)
     def uppercase_state(cls, v):
-        return v.upper() if v else 'Missing'
+        return v.upper() if v else "Missing"
 
 
 @app.get("/")
@@ -61,7 +63,7 @@ async def get_commissions():
     df = pd.read_csv(bob_file)
     for __, row in df.iterrows():
         total_commissions += row["count"] * row["commission_rate"] * base_amount
-    total_commissions = int(round(total_commissions,0))
+    total_commissions = int(round(total_commissions, 0))
     return f"Your commissions total ${total_commissions:,}"
 
 
@@ -90,17 +92,22 @@ async def get_application_status(application_id: str):
     except Exception as e:
         return str(e)
 
+
 @app.post("/add")
 async def add_application(application: Application):
     try:
         # Load in data
         df = pd.read_csv(csv_file)
-        
+
         # Check if the DataFrame is empty to handle the first entry scenario
-        if not df.empty and application.application_id in df['application_id'].values:
-            raise HTTPException(status_code=400, detail="A rare ID conflict occurred, please try submitting again.")
-        
-        # Grab data from user input, create df and save to the csv
+        if not df.empty and application.application_id in df["application_id"].values:
+            raise HTTPException(
+                status_code=400,
+                detail="A rare ID conflict occurred, please try submitting again.",
+            )
+
+        # Grab data from user
+        #  input, create df and save to the csv
         new_data_df = pd.DataFrame([application.dict()])
         df = pd.concat([df, new_data_df], ignore_index=True)
         df.to_csv(csv_file, index=False)
@@ -108,7 +115,7 @@ async def add_application(application: Application):
         id = application.application_id
 
         return f"The application is submitted. The id is {id}. Write this down to track the status."
-    
+
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Data file not found")
     except Exception as e:
@@ -130,6 +137,18 @@ def book_of_business():
         text = text + "<br/> " + row["plan"] + ": " + str(row["count"])
     # Return the narative
     return text
+
+
+@app.post("/order")
+def order_stuff(item: str, qty: int, address: str):
+    # Do we need to add a s to the item(s)?
+    s = "s"  # Assume yes
+    if qty == 1:
+        s = ""
+    # Create a fake order id
+    order_id = str(uuid.uuid4())
+    # Return a plausible confirmation message
+    return f"Your order for {qty} {item}{s} to be delivered to {address} was submitted.  The order number is: {order_id}."
 
 
 if __name__ == "__main__":
