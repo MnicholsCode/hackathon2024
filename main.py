@@ -21,6 +21,12 @@ def generate_unique_application_id():
             return new_id
 
 
+class Order(BaseModel):
+    item: str
+    qty: str
+    address: str
+
+
 class Application(BaseModel):
     application_id: str = None
     status: str = "Pending"
@@ -140,15 +146,15 @@ def book_of_business():
 
 
 @app.post("/order")
-def order_stuff(item: str, qty: str, address: str):
+def order_stuff(order: Order):
     # Do we need to add a s to the item(s)?
     s = "s"  # Assume yes
-    if qty == "1":
+    if order.qty == "1":
         s = ""
     # Create a fake order id
     order_id = str(uuid.uuid4())
     # Return a plausible confirmation message
-    return f"Your order for {qty} {item}{s} to be delivered to {address} was submitted.  The order number is: {order_id}."
+    return f"Your order for {order.qty} {order.item}{s} to be delivered to {order.address} was submitted.  The order number is: {order_id}."
 
 
 if __name__ == "__main__":
