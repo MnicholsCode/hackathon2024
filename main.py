@@ -94,7 +94,7 @@ class ApplicationResponse(BaseModel):
     status: str
     first_name: str
     last_name: str
-    submission_data: str
+    submission_date: str
     dob: str
     address: str
     plan_choice: str
