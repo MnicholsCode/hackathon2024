@@ -127,7 +127,7 @@ def book_of_business():
     # Loop over the aggregated data
     for __, row in df.iterrows():
         # Add to the narative
-        text = text + "\n " + row["plan"] + ": " + str(row["count"])
+        text = text + "<br/> " + row["plan"] + ": " + str(row["count"])
     # Return the narative
     return text
 
