@@ -140,10 +140,10 @@ def book_of_business():
 
 
 @app.post("/order")
-def order_stuff(item: str, qty: int, address: str):
+def order_stuff(item: str, qty: str, address: str):
     # Do we need to add a s to the item(s)?
     s = "s"  # Assume yes
-    if qty == 1:
+    if qty == "1":
         s = ""
     # Create a fake order id
     order_id = str(uuid.uuid4())
