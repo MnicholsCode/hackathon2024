@@ -65,7 +65,7 @@ class ApplicationUpdate(BaseModel):
     @validator('field_name')
     def validate_field_name(cls, v):
         # Fields allowed to change
-        allowed_fields = {'first_name', 'last_name', 'address', 'city','dob', 'plan_choice', 'status', 'submission_data'}
+        allowed_fields = {'first_name', 'last_name', 'address', 'city','dob', 'plan_choice', 'status', 'submission_date'}
         # Validation for field choices
         if v not in allowed_fields:
             raise ValueError("This field cannot be updated or does not exist.")
