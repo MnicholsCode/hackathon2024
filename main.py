@@ -54,7 +54,7 @@ class Application(BaseModel):
 
 # SQLAlchemy model for database
 class ApplicationDB(Base):
-    __tablename__ = "applications"
+    __tablename__ = "fake_applications"
     application_id = Column(String, primary_key=True, default=generate_unique_id)
     status = Column(String, default="Pending")
     first_name = Column(String)
