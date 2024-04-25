@@ -5,7 +5,9 @@ from pydantic import BaseModel, validator, root_validator
 from datetime import datetime
 
 app = FastAPI()
-csv_file = 'data.csv'
+csv_file = "data.csv"
+bob_file = "book_of_business.csv"
+
 
 def generate_unique_application_id():
     """
@@ -46,9 +48,21 @@ class Application(BaseModel):
     def uppercase_state(cls, v):
         return v.upper() if v else 'Missing'
 
+
 @app.get("/")
 async def root():
     return {"message": "Hello World"}
+
+
+@app.get("/commissions")
+async def get_commissions():
+    base_amount = 640
+    total_commissions = 0
+    df = pd.read_csv(bob_file)
+    for __, row in df.iterrows():
+        total_commissions += row["count"] * row["commission_rate"] * base_amount
+    return total_commissions
+
 
 @app.get("/status/{application_id}")
 async def get_application_status(application_id: str):
@@ -56,22 +70,22 @@ async def get_application_status(application_id: str):
         # Load data into python
         df = pd.read_csv(csv_file)
         # Find the match on the application id
-        result = df[df['application_id'] == application_id]
+        result = df[df["application_id"] == application_id]
         # Check if the id is empty
         if result.empty:
             return f"{application_id} is not found.  Please check and try again."
         # Get submission date from application
-        submission_date = result['submission_date'].iloc[0]
+        submission_date = result["submission_date"].iloc[0]
         # Get our as_of_date
         as_of_date = datetime.now().strftime("%m%d%Y")
         # Get applications status
-        status = result['status'].iloc[0]
+        status = result["status"].iloc[0]
         # Setup output string for bot
         return f"As of {as_of_date}, the status for {application_id} is {status}.  It was submitted on {submission_date}"
 
     except FileNotFoundError:
         return "Data file does not exist."
-    
+
     except Exception as e:
         return str(e)
 
@@ -102,7 +116,7 @@ async def add_application(application: Application):
 
 @app.get("/book_of_business")
 def book_of_business():
-    df = pd.read_csv("book_of_business.csv")
+    df = pd.read_csv(bob_file)
     # Get the total number of members
     total = sum(df["count"])
     # Start the book of business narative
@@ -116,6 +130,8 @@ def book_of_business():
     # Return the narative
     return text
 
+
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="127.0.0.1", port=8000)
