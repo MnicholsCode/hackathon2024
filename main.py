@@ -62,6 +62,7 @@ class ApplicationDB(Base):
     submission_data = Column(String, default=datetime.now().strftime("%m/%d/%Y"))
     dob = Column(String)
     address = Column(String, default="N/A")
+    plan_choice = Column(String)
 
 @app.on_event("startup")
 def startup_event():
@@ -108,19 +109,22 @@ async def get_application_status(application_id: str, db: Session=Depends(get_db
 
 @app.post("/add")
 async def add_application(application_data: Application, db: Session = Depends(get_db)):
-    new_application = ApplicationDB(
-        first_name=application_data.first_name,
-        last_name=application_data.last_name,
-        dob=application_data.dob,
-        address=application_data.address,
-        plan_choice=application_data.plan_choice
-    )
-    db.add(new_application)
-    db.commit()
-    db.refresh(new_application)  # Refresh to load the auto-generated fields like application_id
-
-    # Return a message indicating success along with the application_id
-    return f"The application is submitted. The id is {new_application.application_id}. Write this down to track the status."
+    try:
+        new_application = ApplicationDB(
+            first_name=application_data.first_name,
+            last_name=application_data.last_name,
+            dob=application_data.dob,
+            address=application_data.address,
+            plan_choice=application_data.plan_choice
+        )
+        db.add(new_application)
+        db.commit()
+    
+        # Return a message indicating success along with the application_id
+        return f"The application is submitted. The id is {new_application.application_id}. Write this down to track the status."
+    except Exception as e:
+        do.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
     
 
 @app.get("/book_of_business")
