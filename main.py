@@ -87,6 +87,20 @@ class ApplicationDB(Base):
     @validates('first_name', 'last_name')
     def validate_name(self, key, name):
         return name.title()
+    
+# Pydantic model to correspond with sql alchemy model
+class ApplicationResponse(BaseModel):
+    application_id: str
+    status: str
+    first_name: str
+    last_name: str
+    submission_data: str
+    dob: str
+    address: str
+    plan_choice: str
+
+    class Config:
+        orm_mode = True
 
 
 @app.on_event("startup")
@@ -186,7 +200,7 @@ async def update_application(update_data: ApplicationUpdate, db: Session = Depen
         raise HTTPException(status_code=400, detail="Invalid field name")
 
 # Display all applications depending on their status    
-@app.get("/applications/status/", response_model=List[ApplicationDB])
+@app.get("/applications/status/", response_model=List[ApplicationResponse])
 async def get_applications_by_status(status: str = Query(..., enum=["pending", "reviewed", "completed"]), db: Session = Depends(get_db)):
     applications = db.query(ApplicationDB).filter(ApplicationDB.status == status).all()
     if not applications:
