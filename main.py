@@ -100,7 +100,7 @@ class ApplicationResponse(BaseModel):
     plan_choice: str
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 @app.on_event("startup")
@@ -201,7 +201,7 @@ async def update_application(update_data: ApplicationUpdate, db: Session = Depen
 
 # Display all applications depending on their status    
 @app.get("/applications/status/", response_model=List[ApplicationResponse])
-async def get_applications_by_status(status: str = Query(..., enum=["pending", "reviewed", "completed"]), db: Session = Depends(get_db)):
+async def get_applications_by_status(status: str = Query(..., enum=["Pending", "Reviewed", "Completed"]), db: Session = Depends(get_db)):
     applications = db.query(ApplicationDB).filter(ApplicationDB.status == status).all()
     if not applications:
         raise HTTPException(status_code=404, detail="No applications found with the specified status")
