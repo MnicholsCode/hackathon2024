@@ -3,6 +3,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session, validates
 import sqlalchemy as sa
 from typing import Optional, List
+from zoneinfo import ZoneInfo
 
 import pandas as pd
 from secrets import token_hex
@@ -78,7 +79,7 @@ class ApplicationDB(Base):
     status = Column(String, default="Pending")
     first_name = Column(String)
     last_name = Column(String)
-    submission_date = Column(String, default=datetime.now().strftime("%m/%d/%Y %I:%M%p"))
+    submission_date = Column(String, default=datetime.now(ZoneInfo("America/New_York")).strftime("%m/%d/%Y %I:%M%p"))
     dob = Column(String)
     address = Column(String, default="N/A")
     plan_choice = Column(String)
@@ -136,7 +137,7 @@ async def get_application_status(application_id: str, db: Session=Depends(get_db
         
         # Prepare the data
         submission_date = application.submission_date
-        as_of_date = datetime.now().strftime("%m/%d/%Y %I:%M%p")
+        as_of_date = datetime.now(ZoneInfo("America/New_York")).strftime("%m/%d/%Y %I:%M%p")
         status = application.status
 
         # Setup output string for bot
