@@ -54,12 +54,12 @@ class Application(BaseModel):
 
 # SQLAlchemy model for database
 class ApplicationDB(Base):
-    __tablename__ = "fake_applications"
+    __tablename__ = "fake_application"
     application_id = Column(String, primary_key=True, default=generate_unique_id)
     status = Column(String, default="Pending")
     first_name = Column(String)
     last_name = Column(String)
-    submission_data = Column(String, default=datetime.now().strftime("%m/%d/%Y"))
+    submission_date = Column(String, default=datetime.now().strftime("%m/%d/%Y"))
     dob = Column(String)
     address = Column(String, default="N/A")
     plan_choice = Column(String)
