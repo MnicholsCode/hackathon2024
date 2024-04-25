@@ -2,11 +2,11 @@ from sqlalchemy import Column, String, Date, create_engine, func
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session, validates
 import sqlalchemy as sa
-from typing import Optional
+from typing import Optional, List
 
 import pandas as pd
 from secrets import token_hex
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, Query
 from pydantic import BaseModel, validator, ValidationError
 from datetime import datetime
 import uuid
@@ -65,7 +65,7 @@ class ApplicationUpdate(BaseModel):
     @validator('field_name')
     def validate_field_name(cls, v):
         # Fields allowed to change
-        allowed_fields = {'first_name', 'last_name', 'address', 'city','dob', 'plan_choice'}
+        allowed_fields = {'first_name', 'last_name', 'address', 'city','dob', 'plan_choice', 'status', 'submission_data'}
         # Validation for field choices
         if v not in allowed_fields:
             raise ValueError("This field cannot be updated or does not exist.")
@@ -78,7 +78,7 @@ class ApplicationDB(Base):
     status = Column(String, default="Pending")
     first_name = Column(String)
     last_name = Column(String)
-    submission_date = Column(String, default=datetime.now().strftime("%m/%d/%Y"))
+    submission_date = Column(String, default=datetime.now().strftime("%m/%d/%Y %I:%M%p"))
     dob = Column(String)
     address = Column(String, default="N/A")
     plan_choice = Column(String)
@@ -98,7 +98,7 @@ def startup_event():
 async def root():
     return {"message": "Hello World"}
 
-
+# Get commissions
 @app.get("/commissions")
 async def get_commissions():
     base_amount = 640
@@ -109,12 +109,12 @@ async def get_commissions():
     total_commissions = int(round(total_commissions, 0))
     return f"Your commissions total ${total_commissions:,}"
 
-
+# Get Status for application
 @app.get("/status/{application_id}")
 async def get_application_status(application_id: str, db: Session=Depends(get_db)):
     try:
         # Query the database for the application
-        application = db.query(ApplicationDB).filter(ApplicationDB.application_id == application_id).first()
+        application = db.query(ApplicationDB).filter(func.lower(ApplicationDB.application_id) == application_id.lower()).first()
         
         # Check if the application is found
         if not application:
@@ -122,7 +122,7 @@ async def get_application_status(application_id: str, db: Session=Depends(get_db
         
         # Prepare the data
         submission_date = application.submission_date
-        as_of_date = datetime.now().strftime("%m/%d/%Y")
+        as_of_date = datetime.now().strftime("%m/%d/%Y %I:%M%p")
         status = application.status
 
         # Setup output string for bot
@@ -131,6 +131,7 @@ async def get_application_status(application_id: str, db: Session=Depends(get_db
     except Exception as e:
         return str(e)
 
+# Search the database for the application using first and last name
 @app.get("/search-by-name", response_model=str)
 async def fetch_applications_by_name(first_name: str, last_name: str, db: Session = Depends(get_db)):
     applications = db.query(ApplicationDB).filter(
@@ -147,6 +148,7 @@ async def fetch_applications_by_name(first_name: str, last_name: str, db: Sessio
     )
     return response
 
+# Add an application to the database
 @app.post("/add")
 async def add_application(application_data: Application, db: Session = Depends(get_db)):
     try:
@@ -166,7 +168,7 @@ async def add_application(application_data: Application, db: Session = Depends(g
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
 
-
+# Update certain fields in the application
 @app.put("/update-application")
 async def update_application(update_data: ApplicationUpdate, db: Session = Depends(get_db)):
     # Fetch the existing application
@@ -183,6 +185,15 @@ async def update_application(update_data: ApplicationUpdate, db: Session = Depen
         db.rollback()
         raise HTTPException(status_code=400, detail="Invalid field name")
 
+# Display all applications depending on their status    
+@app.get("/applications/status/", response_model=List[ApplicationDB])
+async def get_applications_by_status(status: str = Query(..., enum=["pending", "reviewed", "completed"]), db: Session = Depends(get_db)):
+    applications = db.query(ApplicationDB).filter(ApplicationDB.status == status).all()
+    if not applications:
+        raise HTTPException(status_code=404, detail="No applications found with the specified status")
+    return applications
+
+# Book of business
 @app.get("/book_of_business")
 def book_of_business():
     df = pd.read_csv(bob_file)
@@ -199,7 +210,7 @@ def book_of_business():
     # Return the narative
     return text
 
-
+# Place an order
 @app.post("/order")
 def order_stuff(order: Order):
     # Do we need to add a s to the item(s)?
