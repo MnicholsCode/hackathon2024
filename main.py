@@ -118,7 +118,7 @@ async def fetch_applications_by_name(first_name: str, last_name: str, db: Sessio
         return "No applications found with the provided names."
 
     response = "\n".join(
-        f"Application ID: {app.application_id}, Name: {app.first_name} {app.last_name}, Status: {app.status}, Address: {app.address}, Submitted on: {app.submission_date}, DOB: {app.dob}, Plan Choice" {app.plan_choice}"
+        f"Application ID: {app.application_id}, Name: {app.first_name} {app.last_name}, Status: {app.status}, Address: {app.address}, Submitted on: {app.submission_date}, DOB: {app.dob}, Plan Choice: {app.plan_choice}"
         for app in applications
     )
     return response
