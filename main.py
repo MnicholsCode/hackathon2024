@@ -7,7 +7,7 @@ from typing import Optional
 import pandas as pd
 from secrets import token_hex
 from fastapi import FastAPI, HTTPException, Depends
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, validator, ValidationError
 from datetime import datetime
 import uuid
 
@@ -52,9 +52,24 @@ class Application(BaseModel):
     plan_choice: str
 
     # Validate for name
-    @validator('first_name', 'last_name', pre=True, each_item=True)
+    @validator('first_name', 'last_name', pre=True)
     def capitalize_name(cls, v):
         return v.title()
+    
+# Pydantic model for application update
+class ApplicationUpdate(BaseModel):
+    application_id: str
+    field_name: str
+    new_value: str
+
+    @validator('field_name')
+    def validate_field_name(cls, v):
+        # Fields allowed to change
+        allowed_fields = {'first_name', 'last_name', 'address', 'city','dob', 'plan_choice'}
+        # Validation for field choices
+        if v not in allowed_fields:
+            raise ValueError("This field cannot be updated or does not exist.")
+        return v
 
 # SQLAlchemy model for database
 class ApplicationDB(Base):
@@ -150,7 +165,23 @@ async def add_application(application_data: Application, db: Session = Depends(g
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
-    
+
+
+@app.put("/update-application")
+async def update_application(update_data: ApplicationUpdate, db: Session = Depends(get_db)):
+    # Fetch the existing application
+    application = db.query(ApplicationDB).filter(ApplicationDB.application_id == update_data.application_id).first()
+    if not application:
+        raise HTTPException(status_code=404, detail="Application not found")
+
+    # Check if the field exists and update it
+    if hasattr(application, update_data.field_name):
+        setattr(application, update_data.field_name, update_data.new_value)
+        db.commit()
+        return f"Updated {update_data.field_name} successfully."
+    else:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Invalid field name")
 
 @app.get("/book_of_business")
 def book_of_business():
