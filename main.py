@@ -9,6 +9,7 @@ from secrets import token_hex
 from fastapi import FastAPI, HTTPException, Depends
 from pydantic import BaseModel
 from datetime import datetime
+import uuid
 
 app = FastAPI()
 csv_file = "data.csv"
@@ -71,7 +72,7 @@ async def get_commissions():
     df = pd.read_csv(bob_file)
     for __, row in df.iterrows():
         total_commissions += row["count"] * row["commission_rate"] * base_amount
-    total_commissions = int(round(total_commissions,0))
+    total_commissions = int(round(total_commissions, 0))
     return f"Your commissions total ${total_commissions:,}"
 
 
@@ -95,6 +96,7 @@ async def get_application_status(application_id: str, db: Session=Depends(get_db
 
     except Exception as e:
         return str(e)
+
 
 @app.post("/add")
 async def add_application(application_data: Application, db: Session = Depends(get_db)):
@@ -125,9 +127,21 @@ def book_of_business():
     # Loop over the aggregated data
     for __, row in df.iterrows():
         # Add to the narative
-        text = text + "\n " + row["plan"] + ": " + str(row["count"])
+        text = text + "<br/> " + row["plan"] + ": " + str(row["count"])
     # Return the narative
     return text
+
+
+@app.post("/order")
+def order_stuff(item: str, qty: int, address: str):
+    # Do we need to add a s to the item(s)?
+    s = "s"  # Assume yes
+    if qty == 1:
+        s = ""
+    # Create a fake order id
+    order_id = str(uuid.uuid4())
+    # Return a plausible confirmation message
+    return f"Your order for {qty} {item}{s} to be delivered to {address} was submitted.  The order number is: {order_id}."
 
 
 if __name__ == "__main__":
