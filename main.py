@@ -96,7 +96,7 @@ async def get_application_status(application_id: str, db: Session=Depends(get_db
             return f"{application_id} is not found. Please check and try again."
         
         # Prepare the data
-        submission_date = application.submission_date.strftime("%m/%d/%Y") if application.submission_date else "Date not available"
+        submission_date = application.submission_date
         as_of_date = datetime.now().strftime("%m/%d/%Y")
         status = application.status
 
