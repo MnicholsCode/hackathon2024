@@ -61,14 +61,15 @@ async def get_commissions():
     df = pd.read_csv(bob_file)
     for __, row in df.iterrows():
         total_commissions += row["count"] * row["commission_rate"] * base_amount
-    return total_commissions
+    total_commissions = int(round(total_commissions,0))
+    return f"Your commissions total ${total_commissions:,}"
 
 
 @app.get("/status/{application_id}")
 async def get_application_status(application_id: str):
     try:
         # Load data into python
-        df = pd.read_csv(csv_file)
+        df = pd.read_csv(csv_file, dtype=str)
         # Find the match on the application id
         result = df[df["application_id"] == application_id]
         # Check if the id is empty
@@ -77,7 +78,7 @@ async def get_application_status(application_id: str):
         # Get submission date from application
         submission_date = result["submission_date"].iloc[0]
         # Get our as_of_date
-        as_of_date = datetime.now().strftime("%m%d%Y")
+        as_of_date = datetime.now().strftime("%m/%d/%Y")
         # Get applications status
         status = result["status"].iloc[0]
         # Setup output string for bot
