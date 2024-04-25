@@ -1,13 +1,13 @@
-from sqlalchemy import Column, String, Date, create_engine
+from sqlalchemy import Column, String, Date, create_engine, func
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.orm import sessionmaker, Session, validates
 import sqlalchemy as sa
 from typing import Optional
 
 import pandas as pd
 from secrets import token_hex
 from fastapi import FastAPI, HTTPException, Depends
-from pydantic import BaseModel
+from pydantic import BaseModel, validator
 from datetime import datetime
 import uuid
 
@@ -51,6 +51,10 @@ class Application(BaseModel):
     address: Optional[str] = None 
     plan_choice: str
 
+    # Validate for name
+    @validator('first_name', 'last_name', pre=True, each_item=True)
+    def capitalize_name(cls, v):
+        return v.title()
 
 # SQLAlchemy model for database
 class ApplicationDB(Base):
@@ -63,6 +67,11 @@ class ApplicationDB(Base):
     dob = Column(String)
     address = Column(String, default="N/A")
     plan_choice = Column(String)
+    
+    # Validation for name
+    @validates('first_name', 'last_name')
+    def validate_name(self, key, name):
+        return name.title()
 
 
 @app.on_event("startup")
@@ -110,8 +119,8 @@ async def get_application_status(application_id: str, db: Session=Depends(get_db
 @app.get("/search-by-name", response_model=str)
 async def fetch_applications_by_name(first_name: str, last_name: str, db: Session = Depends(get_db)):
     applications = db.query(ApplicationDB).filter(
-        ApplicationDB.first_name == first_name,
-        ApplicationDB.last_name == last_name
+        func.lower(ApplicationDB.first_name) == first_name.lower(),
+        func.lower(ApplicationDB.last_name) == last_name.lower()
     ).all()
 
     if not applications:
