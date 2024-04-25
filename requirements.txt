@@ -2,3 +2,5 @@ fastapi[all]
 pandas
 pydantic
 datetime
+sqlalchemy
+psycopg2-binary

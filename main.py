@@ -1,24 +1,40 @@
+from sqlalchemy import Column, String, Date, create_engine
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker, Session
+import sqlalchemy as sa
+from typing import Optional
+
 import pandas as pd
 from secrets import token_hex
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, validator, root_validator
+from fastapi import FastAPI, HTTPException, Depends
+from pydantic import BaseModel
 from datetime import datetime
 import uuid
 
 app = FastAPI()
 csv_file = "data.csv"
 bob_file = "book_of_business.csv"
+# Database setup
+database_url = "postgres://hackathon_24_postgres_db_user:miFahcbAg3EBV51UntwSvo6bnekAMo0m@dpg-cokqhdud3nmc739jrqj0-a/hackathon_24_postgres_db"
+engine = create_engine(database_url)
+session_local = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+Base = declarative_base()
 
-
-def generate_unique_application_id():
+def generate_unique_id():
     """
     Function to create a unique id
     """
-    df = pd.read_csv(csv_file)
-    while True:
-        new_id = token_hex(2)  # Generates a random 4-char hex string (2 bytes)
-        if new_id not in df["application_id"].values:
-            return new_id
+    return token_hex(3)
+
+def get_db():
+    """
+    Function to set up database session
+    """
+    db = session_local()
+    try:
+        yield db
+    finally:
+        db.close()
 
 
 class Order(BaseModel):
@@ -27,35 +43,30 @@ class Order(BaseModel):
     address: str
 
 
+
+# Pydantic model for input validation
 class Application(BaseModel):
-    application_id: str = None
-    status: str = "Pending"
-    first_name: str = "Missing"
-    last_name: str = "Missing"
-    submission_date: str = None
-    dob: str = "Missing"
-    address: str = "Missing"
-    city: str = "Missing"
-    state: str = "Missing"
-    zip: str = "00000"
-    plan_choice: str = "Missing"
+    first_name: str 
+    last_name: str 
+    dob: str 
+    address: Optional[str] = None 
+    plan_choice: str
 
-    @root_validator(pre=True)
-    def set_application_id(cls, values):
-        if values.get("application_id") is None:
-            values["application_id"] = generate_unique_application_id()
-        if values.get("submission_date") is None:
-            values["submission_date"] = datetime.now().strftime("%m/%d/%Y")
-        return values
+# SQLAlchemy model for database
+class ApplicationDB(Base):
+    __tablename__ = "applications"
+    application_id = Column(String, primary_key=True, default=generate_unique_id)
+    status = Column(String, default="Pending")
+    first_name = Column(String)
+    last_name = Column(String)
+    submission_data = Column(String, default=datetime.now().strftime("%m/%d/%Y"))
+    dob = Column(String)
+    address = Column(String, default="N/A")
 
-    @validator("city", pre=True, always=True)
-    def capitalize_city(cls, v):
-        return v.title() if v else "Missing"
-
-    @validator("state", pre=True, always=True)
-    def uppercase_state(cls, v):
-        return v.upper() if v else "Missing"
-
+@app.on_event("startup")
+def startup_event():
+    # Create database tables if they don't exist
+    Base.metadata.create_all(bind=engine)
 
 @app.get("/")
 async def root():
@@ -74,59 +85,43 @@ async def get_commissions():
 
 
 @app.get("/status/{application_id}")
-async def get_application_status(application_id: str):
+async def get_application_status(application_id: str, db: Session=Depends(get_db)):
     try:
-        # Load data into python
-        df = pd.read_csv(csv_file, dtype=str)
-        # Find the match on the application id
-        result = df[df["application_id"] == application_id]
-        # Check if the id is empty
-        if result.empty:
-            return f"{application_id} is not found.  Please check and try again."
-        # Get submission date from application
-        submission_date = result["submission_date"].iloc[0]
-        # Get our as_of_date
+        # Query the database for the application
+        application = db.query(ApplicationDB).filter(ApplicationDB.application_id == application_id).first()
+        
+        # Check if the application is found
+        if not application:
+            return f"{application_id} is not found. Please check and try again."
+        
+        # Prepare the data
+        submission_date = application.submission_date.strftime("%m/%d/%Y") if application.submission_date else "Date not available"
         as_of_date = datetime.now().strftime("%m/%d/%Y")
-        # Get applications status
-        status = result["status"].iloc[0]
-        # Setup output string for bot
-        return f"As of {as_of_date}, the status for {application_id} is {status}.  It was submitted on {submission_date}"
+        status = application.status
 
-    except FileNotFoundError:
-        return "Data file does not exist."
+        # Setup output string for bot
+        return f"As of {as_of_date}, the status for {application_id} is '{status}'.  It was submitted on {submission_date}"
 
     except Exception as e:
         return str(e)
 
 
 @app.post("/add")
-async def add_application(application: Application):
-    try:
-        # Load in data
-        df = pd.read_csv(csv_file)
+async def add_application(application_data: Application, db: Session = Depends(get_db)):
+    new_application = ApplicationDB(
+        first_name=application_data.first_name,
+        last_name=application_data.last_name,
+        dob=application_data.dob,
+        address=application_data.address,
+        plan_choice=application_data.plan_choice
+    )
+    db.add(new_application)
+    db.commit()
+    db.refresh(new_application)  # Refresh to load the auto-generated fields like application_id
 
-        # Check if the DataFrame is empty to handle the first entry scenario
-        if not df.empty and application.application_id in df["application_id"].values:
-            raise HTTPException(
-                status_code=400,
-                detail="A rare ID conflict occurred, please try submitting again.",
-            )
-
-        # Grab data from user
-        #  input, create df and save to the csv
-        new_data_df = pd.DataFrame([application.dict()])
-        df = pd.concat([df, new_data_df], ignore_index=True)
-        df.to_csv(csv_file, index=False)
-        # Grab create id
-        id = application.application_id
-
-        return f"The application is submitted. The id is {id}. Write this down to track the status."
-
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail="Data file not found")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
+    # Return a message indicating success along with the application_id
+    return f"The application is submitted. The id is {new_application.application_id}. Write this down to track the status."
+    
 
 @app.get("/book_of_business")
 def book_of_business():
