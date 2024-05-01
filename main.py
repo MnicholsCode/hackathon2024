@@ -16,7 +16,7 @@ app = FastAPI()
 csv_file = "data.csv"
 bob_file = "book_of_business.csv"
 # Database setup
-database_url = "postgresql://hackathon_24_postgres_db_user:miFahcbAg3EBV51UntwSvo6bnekAMo0m@dpg-cokqhdud3nmc739jrqj0-a/hackathon_24_postgres_db"
+database_url = "YOUR_DATABASE_URL"
 engine = create_engine(database_url)
 session_local = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
